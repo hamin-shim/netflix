@@ -1,9 +1,14 @@
 import { useQuery } from "react-query";
 import styled from "styled-components";
 import { motion, AnimatePresence, useViewportScroll } from "framer-motion";
-import { getMovieDetail, getMovies, IGetMoviesResult } from "../api";
+import {
+  getMovieDetail,
+  getMovies,
+  IGetMovieDetail,
+  IGetMoviesResult,
+} from "../api";
 import { makeImagePath } from "../utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useHistory, useRouteMatch } from "react-router-dom";
 
 const Wrapper = styled.div`
@@ -115,14 +120,78 @@ const BigTitle = styled.h3`
   font-size: 46px;
   position: relative;
   top: -80px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  .runtime {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
 `;
 
 const BigOverview = styled.p`
+  .runtime {
+    margin-left: 5px;
+  }
+`;
+
+const DetailRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0;
+`;
+const Description = styled.div`
   padding: 20px;
   position: relative;
   top: -80px;
   color: ${(props) => props.theme.white.lighter};
 `;
+
+const Genres = styled.div`
+  padding: 20px 0;
+  display: flex;
+  align-items: center;
+  span {
+    font-size: 20px;
+  }
+`;
+const Genre = styled.div`
+  background-color: ${(props) => props.theme.black.veryDark};
+  color: ${(props) => props.theme.white.darker};
+  margin: 0 5px;
+  padding: 10px;
+  border-radius: 5px;
+`;
+
+const Release = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  span {
+    &:last-child {
+      font-size: 25px;
+    }
+    &:first-child {
+      font-size: 15px;
+      color: ${(props) => props.theme.white.darker};
+      text-align: right;
+    }
+  }
+`;
+
+const Homepage = styled.div`
+  a {
+    &:hover {
+      border-bottom: 1px solid ${(props) => props.theme.white.darker};
+    }
+  }
+`;
+
+const Rate = styled.div``;
 
 const rowVariants = {
   hidden: {
@@ -172,11 +241,14 @@ function Home() {
     ["movies", "nowPlaying"],
     getMovies
   );
-  const { data: DetailData, isLoading: DeatilLoading } =
-    useQuery<IGetMoviesResult>(["movie", "detail"], () =>
-      getMovieDetail(Number(bigMovieMatch?.params.movieId) | 0)
-    );
-  console.log(DetailData);
+  const {
+    data: DetailData,
+    isLoading: DeatilLoading,
+    refetch,
+  } = useQuery<IGetMovieDetail>(["movie", "detail"], () =>
+    getMovieDetail(Number(bigMovieMatch?.params.movieId))
+  );
+
   const [index, setIndex] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const incraseIndex = () => {
@@ -193,9 +265,12 @@ function Home() {
     history.push(`/movies/${movieId}`);
   };
   const onOverlayClick = () => history.push("/");
-  const clickedMovie =
-    bigMovieMatch?.params.movieId &&
-    data?.results.find((movie) => movie.id === +bigMovieMatch.params.movieId);
+
+  useEffect(() => {
+    if (bigMovieMatch?.params.movieId !== undefined) {
+      refetch();
+    }
+  }, [bigMovieMatch?.params.movieId]);
   return (
     <Wrapper>
       {isLoading ? (
@@ -241,36 +316,72 @@ function Home() {
               </Row>
             </AnimatePresence>
           </Slider>
-          <AnimatePresence>
-            {bigMovieMatch ? (
-              <>
-                <Overlay
-                  onClick={onOverlayClick}
-                  exit={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                />
-                <BigMovie
-                  style={{ top: scrollY.get() + 100 }}
-                  layoutId={bigMovieMatch.params.movieId}
-                >
-                  {clickedMovie && (
+          {DetailData?.success === false ? (
+            <h1>Loading...</h1>
+          ) : (
+            <AnimatePresence>
+              {bigMovieMatch ? (
+                <>
+                  <Overlay
+                    onClick={onOverlayClick}
+                    exit={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  />
+                  <BigMovie
+                    style={{ top: scrollY.get() + 100 }}
+                    layoutId={bigMovieMatch.params.movieId}
+                  >
                     <>
                       <BigCover
                         style={{
                           backgroundImage: `linear-gradient(to top, black, transparent), url(${makeImagePath(
-                            clickedMovie.backdrop_path,
+                            DetailData?.backdrop_path + "",
                             "w500"
                           )})`,
                         }}
                       />
-                      <BigTitle>{clickedMovie.title}</BigTitle>
-                      <BigOverview>{clickedMovie.overview}</BigOverview>
+
+                      <BigTitle>{DetailData?.original_title} </BigTitle>
+                      <Description>
+                        <BigOverview>
+                          {DetailData?.overview}
+                          <span className="runtime">
+                            ( {DetailData?.runtime}m )
+                          </span>
+                        </BigOverview>
+                        <DetailRow>
+                          <Genres>
+                            <span>Genre :</span>
+                            {DetailData?.genres?.map((genre, idx) => {
+                              if (idx < 4) {
+                                return <Genre>{genre.name}</Genre>;
+                              }
+                            })}
+                          </Genres>
+
+                          <Release>
+                            <span>Released</span>
+                            <span>{DetailData?.release_date}</span>
+                          </Release>
+                        </DetailRow>
+                        <DetailRow>
+                          <Rate>
+                            Rate : {DetailData?.vote_average} / 10 ({" "}
+                            {DetailData?.vote_count} ){" "}
+                          </Rate>
+                          <Homepage>
+                            <a href={DetailData?.homepage}>
+                              {DetailData?.homepage}
+                            </a>
+                          </Homepage>
+                        </DetailRow>
+                      </Description>
                     </>
-                  )}
-                </BigMovie>
-              </>
-            ) : null}
-          </AnimatePresence>
+                  </BigMovie>
+                </>
+              ) : null}
+            </AnimatePresence>
+          )}
         </>
       )}
     </Wrapper>

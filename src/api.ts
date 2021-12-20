@@ -27,16 +27,39 @@ export interface IGetMoviesResult {
   total_pages: number;
   total_results: number;
 }
-interface IMovieDetail {
+interface IGenre {
   id: number;
   name: string;
 }
 export interface IGetMovieDetail {
-  genres: IMovieDetail[];
+  success: boolean;
+  genres: IGenre[];
   homepage: string;
   vote_average: number;
   vote_count: number;
+  release_date: string;
+  runtime: number;
+  backdrop_path: string;
+  original_title: string;
+  overview: string;
 }
+interface Iruntime {}
+export interface IGetTvDetail {
+  success: boolean;
+  genres: IGenre[];
+  homepage: string;
+  vote_average: number;
+  vote_count: number;
+  number_of_episodes: number;
+  number_of_seasons: number;
+  last_air_date: string;
+  first_air_date: string;
+  episode_run_time: Iruntime[];
+  backdrop_path: string;
+  original_name: string;
+  overview: string;
+}
+
 export interface IGetTvsResult {
   dates: {
     maximum: string;
@@ -58,6 +81,11 @@ export function getTvs() {
     response.json()
   );
 }
+export function getTopRatedTv() {
+  return fetch(`${BASE_PATH}/tv/top_rated?api_key=${API_KEY}`).then(
+    (response) => response.json()
+  );
+}
 export function searchMovies(keyword: string) {
   return fetch(
     `${BASE_PATH}/search/movie?api_key=${API_KEY}&query=${keyword}`
@@ -74,7 +102,7 @@ export function getMovieDetail(movieId: number) {
     (response) => response.json()
   );
 }
-export function getTvDetail(tvId: string) {
+export function getTvDetail(tvId: number) {
   return fetch(`${BASE_PATH}/tv/${tvId}?api_key=${API_KEY}`).then((response) =>
     response.json()
   );
